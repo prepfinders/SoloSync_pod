@@ -25,7 +25,8 @@ export default async function VehiclesPage() {
         {vehicles.length === 0 ? (
           <EmptyState>No vehicles yet.</EmptyState>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto">
+            <table className="table">
             <thead>
               <tr>
                 <th>Vehicle</th>
@@ -55,6 +56,7 @@ export default async function VehiclesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </>

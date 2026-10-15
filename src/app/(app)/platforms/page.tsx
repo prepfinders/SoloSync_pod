@@ -27,7 +27,8 @@ export default async function PlatformsPage() {
         {platforms.length === 0 ? (
           <EmptyState>No platforms yet.</EmptyState>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto">
+            <table className="table">
             <thead>
               <tr>
                 <th>Platform</th>
@@ -60,6 +61,7 @@ export default async function PlatformsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </>
