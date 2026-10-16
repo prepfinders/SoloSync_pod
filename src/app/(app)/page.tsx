@@ -106,10 +106,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Card>
         <div className="grid gap-4 md:grid-cols-2">
           <Card title="Engaged miles" subtitle={`per ${bucket}`}>
-            <SimpleBarChart data={series.map((s) => ({ key: s.key, value: s.miles }))} name="Miles" bucket={bucket} format={(v) => `${fmtNum(v)} mi`} />
+            <SimpleBarChart data={series.map((s) => ({ key: s.key, value: s.miles }))} name="Miles" bucket={bucket} unit="miles" />
           </Card>
           <Card title="Engaged hours" subtitle={`per ${bucket}`}>
-            <SimpleBarChart data={series.map((s) => ({ key: s.key, value: s.hours }))} name="Hours" bucket={bucket} format={(v) => fmtHours(v)} />
+            <SimpleBarChart data={series.map((s) => ({ key: s.key, value: s.hours }))} name="Hours" bucket={bucket} unit="hours" />
           </Card>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "./ChartTooltip";
-import { fmtDayKey } from "@/lib/format";
+import { fmtDayKey, fmtHours, fmtNum } from "@/lib/format";
 import type { Bucket } from "@/lib/metrics";
 
 function labelFor(key: string, bucket: Bucket) {
@@ -15,20 +15,29 @@ function labelFor(key: string, bucket: Bucket) {
   return fmtDayKey(key);
 }
 
-/** One-series bar chart (slot 1). */
+export type SimpleUnit = "miles" | "hours" | "number";
+
+const FORMATS: Record<SimpleUnit, (v: number) => string> = {
+  miles: (v) => `${fmtNum(v)} mi`,
+  hours: (v) => fmtHours(v),
+  number: (v) => fmtNum(v),
+};
+
+/** One-series bar chart (slot 1). `unit` is a plain string so server components can pass it. */
 export function SimpleBarChart({
   data,
   name,
   bucket,
-  format,
+  unit = "number",
   height = 200,
 }: {
   data: { key: string; value: number }[];
   name: string;
   bucket: Bucket;
-  format: (v: number) => string;
+  unit?: SimpleUnit;
   height?: number;
 }) {
+  const format = FORMATS[unit];
   const empty = data.every((d) => d.value === 0);
   return (
     <div style={{ height }} className="w-full">
