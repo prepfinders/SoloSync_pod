@@ -16,8 +16,9 @@ export function effectiveEngagedMiles(s: GigSession) {
     : num(s.engaged_miles);
 }
 
+/** Gross pay for a session: base earnings + tips + per-session adjustment pay. */
 export function sessionGross(s: GigSession) {
-  return num(s.earnings) + num(s.tips);
+  return num(s.earnings) + num(s.tips) + num(s.adjustment_pay);
 }
 
 export function sessionTaxDeduction(s: GigSession) {
@@ -42,11 +43,14 @@ export interface Totals {
   taxDeductibleMiles: number;
   earnings: number;
   tips: number;
+  /** Per-session adjustment pay stored on sessions (part of gross). */
+  sessionAdjustments: number;
   gross: number;
   safetyFees: number;
   energyKwh: number;
   irsDeduction: number;
   expenses: number;
+  /** Separate adjustment pay entries (not tied to a session; not part of gross). */
   adjustmentPay: number;
   /** Gross − IRS deduction − expenses − safety fees (same formula as the app). */
   taxableIncome: number;
@@ -77,11 +81,12 @@ export function computeTotals(
   const taxDeductibleMiles = completed.reduce((a, s) => a + num(s.tax_deductible_miles), 0);
   const earnings = completed.reduce((a, s) => a + num(s.earnings), 0);
   const tips = completed.reduce((a, s) => a + num(s.tips), 0);
+  const sessionAdjustments = completed.reduce((a, s) => a + num(s.adjustment_pay), 0);
   const safetyFees = completed.reduce((a, s) => a + num(s.safety_admin_fee), 0);
   const energyKwh = completed.reduce((a, s) => a + num(s.energy_used), 0);
   const irsDeduction = taxDeductibleMiles * IRS_MILEAGE_RATE;
   const expenseTotal = expenses.reduce((a, e) => a + num(e.amount), 0);
-  const gross = earnings + tips;
+  const gross = earnings + tips + sessionAdjustments;
   const hours = engagedSeconds / 3600;
   const mileageRate = num(profile?.mileage_reimbursement_rate) || 0.37;
   const kwhRate = num(profile?.energy_cost_per_kwh) || 0.227;
@@ -94,6 +99,7 @@ export function computeTotals(
     taxDeductibleMiles,
     earnings,
     tips,
+    sessionAdjustments,
     gross,
     safetyFees,
     energyKwh,

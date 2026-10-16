@@ -38,7 +38,7 @@ export default async function SettingsPage() {
         <Card title="How numbers are computed">
           <ul className="space-y-2 text-sm text-ink-2">
             <li>
-              <strong className="text-ink">Gross</strong> = base earnings + tips.
+              <strong className="text-ink">Gross</strong> = base earnings + tips + per-session adjustment pay. Separate adjustment pay entries are shown on their own.
             </li>
             <li>
               <strong className="text-ink">Engaged miles</strong> = the session&rsquo;s engaged-miles override, otherwise GPS total miles.

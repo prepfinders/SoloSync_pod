@@ -61,6 +61,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
                   <th className="text-right">Miles</th>
                   <th className="text-right">Base</th>
                   <th className="text-right">Tips</th>
+                  <th className="text-right">Adj.</th>
                   <th className="text-right">$/hr</th>
                   <th></th>
                 </tr>
@@ -77,6 +78,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
                     <td className="tnum text-right">{fmtNum(s.engaged_miles ?? num(s.total_miles))}</td>
                     <td className="tnum text-right">{fmtMoney(s.earnings)}</td>
                     <td className="tnum text-right">{fmtMoney(s.tips)}</td>
+                    <td className="tnum text-right">{s.adjustment_pay ? fmtMoney(s.adjustment_pay) : "—"}</td>
                     <td className="tnum text-right">{fmtMoney(sessionHourly(s))}</td>
                     <td className="text-right">
                       <Link href={`/sessions/${s.id}`} className="text-accent hover:underline">
@@ -88,7 +90,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
               </tbody>
               <tfoot>
                 <tr className="text-xs text-muted">
-                  <td colSpan={9} className="pt-3">
+                  <td colSpan={10} className="pt-3">
                     Page total: {fmtMoney(rows.reduce((a, s) => a + sessionGross(s), 0))} gross ·{" "}
                     {fmtNum(rows.reduce((a, s) => a + (s.engaged_miles ?? num(s.total_miles)), 0))} mi
                   </td>

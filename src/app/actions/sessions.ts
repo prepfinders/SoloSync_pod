@@ -49,6 +49,7 @@ function parseSession(fd: FormData, tz: string) {
     tax_deductible_miles,
     earnings: numberOrNull(fd, "earnings", "Earnings"),
     tips: numberOrNull(fd, "tips", "Tips"),
+    adjustment_pay: numberOrNull(fd, "adjustment_pay", "Adjustment pay"),
     safety_admin_fee: numberOrNull(fd, "safety_admin_fee", "Safety & admin fee"),
     energy_used: numberOrNull(fd, "energy_used", "Energy used"),
     order_numbers: orders.length ? orders : null,

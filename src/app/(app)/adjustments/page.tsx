@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/supabase/server";
 import { getAdjustments, getPlatforms, getProfile, tzOf } from "@/lib/queries";
 import { parseRange, type SearchParams } from "@/lib/range";
 import { num } from "@/lib/metrics";
-import { platformColors } from "@/lib/colors";
+import { findPlatform, platformColors } from "@/lib/colors";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,7 +20,6 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
   const range = parseRange(sp, tz, "ytd");
   const [entries, platforms] = await Promise.all([getAdjustments(supabase, range.fromIso, range.toIso), getPlatforms(supabase)]);
   const colors = platformColors(platforms);
-  const pmap = new Map(platforms.map((p) => [p.id, p.name]));
   const total = entries.reduce((a, e) => a + num(e.amount), 0);
 
   return (
@@ -59,7 +58,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
                   <tr key={e.id}>
                     <td className="whitespace-nowrap">{fmtDateTime(e.entry_date, tz)}</td>
                     <td className="text-ink-2">{e.pay_period_start ? fmtDate(`${e.pay_period_start}T12:00:00Z`, "UTC") : "—"}</td>
-                    <td>{e.platform_id ? <PlatformDot color={colors[e.platform_id]} name={pmap.get(e.platform_id) ?? "Unknown"} /> : "—"}</td>
+                    <td>{(() => { const p = findPlatform(platforms, e.platform_id); return p ? <PlatformDot color={colors[p.id]} name={p.name} /> : "—"; })()}</td>
                     <td className="max-w-[18rem] truncate text-ink-2">{e.notes ?? ""}</td>
                     <td className={`tnum text-right ${num(e.amount) < 0 ? "text-bad" : ""}`}>{fmtMoney(e.amount)}</td>
                     <td className="text-right">

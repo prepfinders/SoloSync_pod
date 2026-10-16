@@ -78,7 +78,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <StatTile label="Gross earnings" value={fmtMoney(totals.gross)} hint={`${fmtMoney(totals.earnings)} base + ${fmtMoney(totals.tips)} tips`} />
+        <StatTile label="Gross earnings" value={fmtMoney(totals.gross)} hint={`${fmtMoney(totals.earnings)} base + ${fmtMoney(totals.tips)} tips${totals.sessionAdjustments ? ` + ${fmtMoney(totals.sessionAdjustments)} adj.` : ""}`} />
         <StatTile label="Engaged time" value={fmtHours(totals.engagedHours)} hint={totals.breakHours > 0 ? `${fmtHours(totals.breakHours)} on break` : undefined} />
         <StatTile label="Engaged miles" value={fmtNum(totals.miles)} hint={`${fmtNum(totals.taxDeductibleMiles)} tax-deductible`} />
         <StatTile
@@ -101,7 +101,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="mt-5 grid gap-4">
-        <Card title="Earnings" subtitle={`Gross (base + tips) per ${bucket}, stacked by platform`}>
+        <Card title="Earnings" subtitle={`Gross (base + tips + adjustment pay) per ${bucket}, stacked by platform`}>
           <EarningsChart data={series} series={seriesDefs} bucket={bucket} />
         </Card>
         <div className="grid gap-4 md:grid-cols-2">

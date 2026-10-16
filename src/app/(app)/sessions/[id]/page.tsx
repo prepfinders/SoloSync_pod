@@ -36,7 +36,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
         <div className="space-y-4">
           <Card title="Summary">
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-ink-2">Gross</dt>
+              <dt className="text-ink-2">Gross (base + tips + adj.)</dt>
               <dd className="tnum text-right">{fmtMoney(sessionGross(session))}</dd>
               <dt className="text-ink-2">Per hour</dt>
               <dd className="tnum text-right">{fmtMoney(sessionHourly(session))}</dd>

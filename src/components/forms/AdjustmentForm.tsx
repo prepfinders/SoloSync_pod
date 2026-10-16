@@ -25,7 +25,7 @@ export function AdjustmentForm({
           <select className="input" name="platform_id" defaultValue={entry?.platform_id ?? ""}>
             <option value="">—</option>
             {platforms.map((p) => (
-              <option key={p.id} value={p.id}>
+              <option key={p.id} value={p.local_id ?? p.id}>
                 {p.name}
               </option>
             ))}

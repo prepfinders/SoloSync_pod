@@ -76,6 +76,9 @@ export function SessionForm({
         <Field label="Tips ($)">
           <input className="input" type="number" name="tips" step="0.01" min="0" defaultValue={session?.tips ?? ""} />
         </Field>
+        <Field label="Adjustment pay ($)" hint="Top-ups or bonuses paid on this session; counted in gross">
+          <input className="input" type="number" name="adjustment_pay" step="0.01" defaultValue={session?.adjustment_pay ?? ""} />
+        </Field>
         <Field label="Safety & admin fee ($)">
           <input className="input" type="number" name="safety_admin_fee" step="0.01" min="0" defaultValue={session?.safety_admin_fee ?? ""} />
         </Field>

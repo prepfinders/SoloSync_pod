@@ -17,3 +17,12 @@ export function platformColors(platforms: GigPlatform[]): Record<string, string>
 }
 
 export const OTHER_COLOR = "var(--s-other)";
+
+/**
+ * Looks a platform up by server id or by the app-side local id. Adjustment pay
+ * entries written by the iOS app reference platforms by local id.
+ */
+export function findPlatform(platforms: GigPlatform[], ref: string | null | undefined) {
+  if (!ref) return undefined;
+  return platforms.find((p) => p.id === ref) ?? platforms.find((p) => p.local_id === ref);
+}
