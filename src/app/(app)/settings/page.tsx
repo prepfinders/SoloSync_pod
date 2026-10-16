@@ -38,7 +38,7 @@ export default async function SettingsPage() {
         <Card title="How numbers are computed">
           <ul className="space-y-2 text-sm text-ink-2">
             <li>
-              <strong className="text-ink">Gross</strong> = base earnings + tips + per-session adjustment pay. Separate adjustment pay entries are shown on their own.
+              <strong className="text-ink">Gross</strong> = base earnings + tips + per-session adjustment pay + adjustment pay entries (pay-period top-ups and bonuses). Charts show entries as a lighter segment.
             </li>
             <li>
               <strong className="text-ink">Engaged miles</strong> = the session&rsquo;s engaged-miles override, otherwise GPS total miles.
@@ -47,7 +47,7 @@ export default async function SettingsPage() {
               <strong className="text-ink">IRS deduction</strong> = tax-deductible miles × ${IRS_MILEAGE_RATE} (fixed in the app).
             </li>
             <li>
-              <strong className="text-ink">Taxable income</strong> = gross − IRS deduction − expenses − safety &amp; admin fees.
+              <strong className="text-ink">Taxable income</strong> = gross − IRS deduction − expenses − safety &amp; admin fees. Hourly and per-mile rates use gross.
             </li>
             <li>
               <strong className="text-ink">Mileage reimbursement</strong> = engaged miles × your mileage rate.

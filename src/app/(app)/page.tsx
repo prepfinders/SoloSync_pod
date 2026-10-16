@@ -10,9 +10,9 @@ import {
   tzOf,
 } from "@/lib/queries";
 import { parseRange, rangeQuery, str, type SearchParams } from "@/lib/range";
-import { bucketForSpan, computeTotals, groupByBucket, num, sessionGross, sessionHourly, totalsByPlatform } from "@/lib/metrics";
+import { OTHER_PLATFORM, bucketForSpan, computeTotals, groupByBucket, num, sessionGross, sessionHourly, totalsByPlatform, type AdjustmentRow } from "@/lib/metrics";
 import { dateKey } from "@/lib/tz";
-import { platformColors } from "@/lib/colors";
+import { findPlatform, platformColors } from "@/lib/colors";
 import { fmtDateTime, fmtDuration, fmtHours, fmtMoney, fmtNum } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { StatTile } from "@/components/ui/StatTile";
@@ -40,12 +40,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     getScheduledGigs(supabase, { status: "upcoming", fromIso: now.toISOString(), limit: 5 }),
   ]);
 
-  const adjTotal = adjustments.reduce((a, r) => a + num(r.amount), 0);
+  // Adjustment entries reference platforms by the app's local id; resolve to server ids.
+  // When a platform filter is active, keep only that platform's entries.
+  const adjRows: AdjustmentRow[] = adjustments
+    .map((a) => ({ platformId: findPlatform(platforms, a.platform_id)?.id ?? null, amount: num(a.amount), date: a.entry_date }))
+    .filter((a) => !platformId || a.platformId === platformId);
+  const adjTotal = adjRows.reduce((a, r) => a + r.amount, 0);
   const totals = computeTotals(sessions, expenses, adjTotal, profile);
   const bucket = bucketForSpan(range.days);
-  const series = groupByBucket(sessions, (iso) => dateKey(iso, tz), range.fromKey, range.toKey, bucket);
-  const colors = platformColors(platforms);
-  const byPlatform = totalsByPlatform(sessions, platforms);
+  const series = groupByBucket(sessions, (iso) => dateKey(iso, tz), range.fromKey, range.toKey, bucket, adjRows);
+  const colors: Record<string, string> = { ...platformColors(platforms), [OTHER_PLATFORM]: "var(--s-other)" };
+  const byPlatform = totalsByPlatform(sessions, platforms, adjRows);
   const platformMap = new Map(platforms.map((p) => [p.id, p]));
   const target = num(profile?.default_hourly_target) || 25;
 
@@ -78,7 +83,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <StatTile label="Gross earnings" value={fmtMoney(totals.gross)} hint={`${fmtMoney(totals.earnings)} base + ${fmtMoney(totals.tips)} tips${totals.sessionAdjustments ? ` + ${fmtMoney(totals.sessionAdjustments)} adj.` : ""}`} />
+        <StatTile
+          label="Gross earnings"
+          value={fmtMoney(totals.totalPay)}
+          hint={`${fmtMoney(totals.earnings)} base + ${fmtMoney(totals.tips)} tips${totals.sessionAdjustments ? ` + ${fmtMoney(totals.sessionAdjustments)} session adj.` : ""}${totals.adjustmentPay ? ` + ${fmtMoney(totals.adjustmentPay)} adj. entries` : ""}`}
+        />
         <StatTile label="Engaged time" value={fmtHours(totals.engagedHours)} hint={totals.breakHours > 0 ? `${fmtHours(totals.breakHours)} on break` : undefined} />
         <StatTile label="Engaged miles" value={fmtNum(totals.miles)} hint={`${fmtNum(totals.taxDeductibleMiles)} tax-deductible`} />
         <StatTile
@@ -96,12 +105,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatTile label="Expenses" value={fmtMoney(totals.expenses)} hint={`${expenses.length} record${expenses.length === 1 ? "" : "s"}`} />
         <StatTile label="Safety & admin fees" value={fmtMoney(totals.safetyFees)} />
         <StatTile label="Taxable income" value={fmtMoney(totals.taxableIncome)} hint="gross − deduction − expenses − fees" tone={totals.taxableIncome < 0 ? "bad" : "default"} />
-        <StatTile label="Adjustment pay" value={fmtMoney(totals.adjustmentPay)} hint={`${adjustments.length} entr${adjustments.length === 1 ? "y" : "ies"}`} />
+        <StatTile label="Adjustment pay" value={fmtMoney(totals.adjustmentPay)} hint={`${adjRows.length} entr${adjRows.length === 1 ? "y" : "ies"} · included in gross`} />
         <StatTile label="Energy used" value={`${fmtNum(totals.energyKwh)} kWh`} hint={`≈ ${fmtMoney(totals.energyCost)} · ${fmtMoney(totals.mileageReimbursement)} mileage reimb.`} />
       </div>
 
       <div className="mt-5 grid gap-4">
-        <Card title="Earnings" subtitle={`Gross (base + tips + adjustment pay) per ${bucket}, stacked by platform`}>
+        <Card title="Earnings" subtitle={`All pay (base + tips + adjustment pay) per ${bucket}, stacked by platform`}>
           <EarningsChart data={series} series={seriesDefs} bucket={bucket} />
         </Card>
         <div className="grid gap-4 md:grid-cols-2">
@@ -128,7 +137,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       <th className="text-right">Sessions</th>
                       <th className="text-right">Hours</th>
                       <th className="text-right">Miles</th>
-                      <th className="text-right">Gross</th>
+                      <th className="text-right">Sessions $</th>
+                      <th className="text-right">Adj. $</th>
+                      <th className="text-right">Total</th>
                       <th className="text-right">$/hr</th>
                     </tr>
                   </thead>
@@ -142,6 +153,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <td className="tnum text-right">{fmtNum(p.hours)}</td>
                         <td className="tnum text-right">{fmtNum(p.miles)}</td>
                         <td className="tnum text-right">{fmtMoney(p.gross)}</td>
+                        <td className="tnum text-right">{p.adjustments ? fmtMoney(p.adjustments) : "—"}</td>
+                        <td className="tnum text-right font-medium">{fmtMoney(p.total)}</td>
                         <td className="tnum text-right">{fmtMoney(p.hourly)}</td>
                       </tr>
                     ))}
@@ -178,7 +191,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       <th>Platform</th>
                       <th className="text-right">Engaged</th>
                       <th className="text-right">Miles</th>
-                      <th className="text-right">Gross</th>
+                      <th className="text-right">Sessions $</th>
+                      <th className="text-right">Adj. $</th>
+                      <th className="text-right">Total</th>
                       <th className="text-right">$/hr</th>
                     </tr>
                   </thead>

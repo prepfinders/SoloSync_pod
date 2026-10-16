@@ -35,6 +35,13 @@ export function sessionPerMile(s: GigSession) {
   return miles > 0 ? sessionGross(s) / miles : null;
 }
 
+/** An adjustment pay entry resolved to a server platform id (or null). */
+export interface AdjustmentRow {
+  platformId: string | null;
+  amount: number;
+  date: string; // ISO instant (entry_date)
+}
+
 export interface Totals {
   sessions: number;
   engagedHours: number;
@@ -50,8 +57,10 @@ export interface Totals {
   energyKwh: number;
   irsDeduction: number;
   expenses: number;
-  /** Separate adjustment pay entries (not tied to a session; not part of gross). */
+  /** Separate adjustment pay entries (pay-period top-ups, bonuses). */
   adjustmentPay: number;
+  /** gross + adjustmentPay: everything paid in the range. */
+  totalPay: number;
   /** Gross − IRS deduction − expenses − safety fees (same formula as the app). */
   taxableIncome: number;
   /** Prop 22 style reimbursement at the user's mileage rate. */
@@ -88,6 +97,7 @@ export function computeTotals(
   const expenseTotal = expenses.reduce((a, e) => a + num(e.amount), 0);
   const gross = earnings + tips + sessionAdjustments;
   const hours = engagedSeconds / 3600;
+  const totalPay = gross + adjustmentPay;
   const mileageRate = num(profile?.mileage_reimbursement_rate) || 0.37;
   const kwhRate = num(profile?.energy_cost_per_kwh) || 0.227;
 
@@ -106,11 +116,12 @@ export function computeTotals(
     irsDeduction,
     expenses: expenseTotal,
     adjustmentPay,
-    taxableIncome: gross - irsDeduction - expenseTotal - safetyFees,
+    totalPay,
+    taxableIncome: totalPay - irsDeduction - expenseTotal - safetyFees,
     mileageReimbursement: miles * mileageRate,
     energyCost: energyKwh * kwhRate,
-    avgHourly: hours > 0 ? gross / hours : null,
-    avgPerMile: miles > 0 ? gross / miles : null,
+    avgHourly: hours > 0 ? totalPay / hours : null,
+    avgPerMile: miles > 0 ? totalPay / miles : null,
   };
 }
 
@@ -154,6 +165,7 @@ export function groupByBucket(
   fromKey: string,
   toKey: string,
   bucket: Bucket,
+  adjustments: AdjustmentRow[] = [],
 ): SeriesPoint[] {
   const map = new Map<string, SeriesPoint>();
   const first = bucketKey(fromKey, bucket);
@@ -173,20 +185,40 @@ export function groupByBucket(
     p.byPlatform[s.platform_id] = (p.byPlatform[s.platform_id] ?? 0) + g;
     map.set(k, p);
   }
+  for (const a of adjustments) {
+    const k = bucketKey(dayKeyOf(a.date), bucket);
+    const p = map.get(k) ?? { key: k, gross: 0, miles: 0, hours: 0, byPlatform: {} };
+    p.gross += a.amount;
+    const pid = a.platformId ?? OTHER_PLATFORM;
+    p.byPlatform[pid] = (p.byPlatform[pid] ?? 0) + a.amount;
+    map.set(k, p);
+  }
   return [...map.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
 }
+
+/** Pseudo platform id for adjustment entries with no platform. */
+export const OTHER_PLATFORM = "__unassigned";
 
 export interface PlatformTotal {
   id: string;
   name: string;
+  /** Session pay: base + tips + per-session adjustment. */
   gross: number;
+  /** Adjustment pay entries attributed to this platform. */
+  adjustments: number;
+  /** gross + adjustments */
+  total: number;
   hours: number;
   miles: number;
   sessions: number;
   hourly: number | null;
 }
 
-export function totalsByPlatform(sessions: GigSession[], platforms: GigPlatform[]): PlatformTotal[] {
+export function totalsByPlatform(
+  sessions: GigSession[],
+  platforms: GigPlatform[],
+  adjustments: AdjustmentRow[] = [],
+): PlatformTotal[] {
   const byId = new Map(platforms.map((p) => [p.id, p]));
   const acc = new Map<string, PlatformTotal>();
   for (const s of sessions) {
@@ -195,6 +227,8 @@ export function totalsByPlatform(sessions: GigSession[], platforms: GigPlatform[
       id: s.platform_id,
       name: byId.get(s.platform_id)?.name ?? "Unknown",
       gross: 0,
+      adjustments: 0,
+      total: 0,
       hours: 0,
       miles: 0,
       sessions: 0,
@@ -206,7 +240,26 @@ export function totalsByPlatform(sessions: GigSession[], platforms: GigPlatform[
     t.sessions += 1;
     acc.set(s.platform_id, t);
   }
+  for (const a of adjustments) {
+    const pid = a.platformId ?? OTHER_PLATFORM;
+    const t = acc.get(pid) ?? {
+      id: pid,
+      name: pid === OTHER_PLATFORM ? "Unassigned" : byId.get(pid)?.name ?? "Unknown",
+      gross: 0,
+      adjustments: 0,
+      total: 0,
+      hours: 0,
+      miles: 0,
+      sessions: 0,
+      hourly: null,
+    };
+    t.adjustments += a.amount;
+    acc.set(pid, t);
+  }
   return [...acc.values()]
-    .map((t) => ({ ...t, hourly: t.hours > 0 ? t.gross / t.hours : null }))
-    .sort((a, b) => b.gross - a.gross);
+    .map((t) => {
+      const total = t.gross + t.adjustments;
+      return { ...t, total, hourly: t.hours > 0 ? total / t.hours : null };
+    })
+    .sort((a, b) => b.total - a.total);
 }
